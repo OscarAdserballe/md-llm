@@ -53,6 +53,15 @@ def create(session_name):
 
 @cli.command()
 @click.argument("session_name", type=str)
+def delete(session_name):
+    """Delete a given session"""
+    session_manager = SessionManager(SESSIONS_DIR)
+
+    session_manager.delete_session(session_name)
+    print(colored(f"Deleted session: {session_name}", "cyan"))
+
+@cli.command()
+@click.argument("session_name", type=str)
 def run_session(session_name):
     """Runs specific session"""
     session = Session(session_name)
