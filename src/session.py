@@ -4,16 +4,21 @@ import yaml
 from config_logger import logger
 import tiktoken
 
-from config import SESSIONS_DIR, DELIMITER, INTERNAL_CHAT_DELIMITER, SUPPORTED_MODELS, DEFAULT_MODEL
+from config import DEFAULT_METADATA, SESSIONS_DIR, DELIMITER, INTERNAL_CHAT_DELIMITER, SUPPORTED_MODELS, DEFAULT_MODEL
 from src.context_manager import ContextManager
 from src.llm import LLM
 
 class Session:
-    def __init__(self, session_name:str):
+    def __init__(self, session_name:str, is_session:bool=True):
         self.session_name = session_name
-        
-        self.session_dir = Path(SESSIONS_DIR) / session_name
-        self.md_file = self.session_dir / f"{session_name}.md"
+
+        if not is_session:
+            self.session_file = Path(session_name).expanduser().resolve()
+            self.session_dir = self.session_file.parent
+            self.md_file = self.session_file
+        else: # otherwise, assume it's a session
+            self.session_dir = Path(SESSIONS_DIR) / session_name
+            self.md_file = self.session_dir / f"{session_name}.md"
 
         self.metadata, self.latest_query, self.chat_history = self.load_session()
         
@@ -31,7 +36,7 @@ class Session:
         )
         self.logger = logger
 
-    def count_tokens(self, text: str) -> int:
+    def count_tokens(self, text) -> int:
         """Count tokens in text using tiktoken"""
         try:
             encoding = tiktoken.get_encoding("cl100k_base")  # GPT-4 encoding
@@ -89,6 +94,11 @@ class Session:
                 metadata = yaml.safe_load(_metadata)
                 latest_query, chat_history = self.parse_chat_history(_content)
 
+            else:
+                metadata = DEFAULT_METADATA
+                latest_query, chat_history = self.parse_chat_history(content)
+
+
         return metadata, latest_query, chat_history
 
     def run_session(self):
@@ -104,15 +114,25 @@ class Session:
 
         with self.md_file.open('r') as f:
             content = f.read()
-            _, _, body = content.split('---', 2)
+            if content.find('---') == -1:
+                write_metadata = False
+                self.logger.info("No metadata found in file, adding default metadata")
+                body = content
+            else:   
+                _, _, body = content.split('---', 2)
+                write_metadata = True
 
         # Recreating file from the bottom up
         with self.md_file.open('w') as f:
-            f.write('---\n')
-            yaml.dump(self.metadata, f, default_flow_style=False)
-            f.write('---')
-            
-            f.write(body)
+            if write_metadata:
+                f.write('---\n')
+                yaml.dump(self.metadata, f, default_flow_style=False)
+                f.write('---')
+           
+            if body.strip() == "":
+                f.write('\n')
+            else:
+                f.write(body)
             f.write(f'\n{INTERNAL_CHAT_DELIMITER}{response}\n\n')
             f.write(f"{DELIMITER}")
             

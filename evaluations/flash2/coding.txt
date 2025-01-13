@@ -1,0 +1,6 @@
+```python
+def reverse_string(s):
+  return s[::-1]
+```
+
+The function `reverse_string` takes a string `s` as input and returns its reversed version. This is achieved using slicing with a step of -1, which effectively iterates through the string backward.

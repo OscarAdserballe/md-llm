@@ -1,10 +1,9 @@
 from pathlib import Path
-from datetime import datetime
 import yaml
 import shutil
-from typing import List, Dict, Optional, Tuple
+from typing import List
 
-from config import DEFAULT_MODEL, SESSIONS_DIR
+from config import SESSIONS_DIR, DEFAULT_METADATA
 
 class SessionManager:
     def __init__(self, sessions_dir: Path=Path(SESSIONS_DIR)):
@@ -23,19 +22,10 @@ class SessionManager:
         # Create session markdown file
         session_md = session_dir / f"{session_name}.md"
         
-        default_metadata = {
-            "session_name": session_name,
-            "created_at": datetime.now().isoformat(),
-            "llm_config": DEFAULT_MODEL,
-            "files": [],
-            "search": [],
-            "current_tokens": 0,
-        }
-                  
         # Write metadata and create initial markdown file
         with session_md.open('w') as f:
             f.write('---\n')
-            yaml.dump(default_metadata, f, default_flow_style=False)
+            yaml.dump(DEFAULT_METADATA, f, default_flow_style=False)
             f.write('---\n\n')
         return session_dir
             

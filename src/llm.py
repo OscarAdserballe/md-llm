@@ -12,6 +12,7 @@ class LLM:
         self.llm_config = llm_config
         self.logger = logger
 
+        # using OpenAI wrapper
         if self.llm_config.provider == "openai":
             self.model = OpenAI(
                 api_key=self.llm_config.api_key
@@ -33,9 +34,16 @@ class LLM:
             "n": 1,
             "messages": full_messages,
         }
+
+        # o1-mini does not support these parameters
         if self.llm_config.model_name != "o1-mini":
             response_params["max_tokens"] = self.llm_config.max_tokens
             response_params["temperature"] = self.llm_config.temperature
+
+        # e.g. search for gemini models
+        if self.llm_config.tools is not None:
+            response_params["tools"] = [self.llm_config.tools]
+            response_params["tool_choice"] = "auto"
 
         response = self.model.chat.completions.create(
             **response_params

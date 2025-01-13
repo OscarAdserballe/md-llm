@@ -1,0 +1,63 @@
+To write a Python function named `reverse_string` that takes a single string argument and returns the reversed string, you can use several methods. Here are a few efficient and common approaches:
+
+### Using Slicing
+This is one of the most concise and efficient ways to reverse a string in Python.
+
+```python
+def reverse_string(s):
+    return s[::-1]
+
+# Example usage:
+original_string = "Hello, World!"
+reversed_string = reverse_string(original_string)
+print(reversed_string)  # Output: !dlroW ,olleH
+```
+
+### Using a For Loop
+This method involves iterating over the characters of the string in reverse order and appending them to a new string.
+
+```python
+def reverse_string(s):
+    reversed_string = ""
+    for i in range(len(s) - 1, -1, -1):
+        reversed_string += s[i]
+    return reversed_string
+
+# Example usage:
+original_string = "Hello, World!"
+reversed_string = reverse_string(original_string)
+print(reversed_string)  # Output: !dlroW ,olleH
+```
+
+### Using a While Loop
+Similar to the for loop method, but using a while loop instead.
+
+```python
+def reverse_string(s):
+    reversed_string = ""
+    index = len(s) - 1
+    while index >= 0:
+        reversed_string += s[index]
+        index -= 1
+    return reversed_string
+
+# Example usage:
+original_string = "Hello, World!"
+reversed_string = reverse_string(original_string)
+print(reversed_string)  # Output: !dlroW ,olleH
+```
+
+### Using List Comprehension and Join
+This method involves creating a list of characters in reverse order and then joining them back into a string.
+
+```python
+def reverse_string(s):
+    return "".join([s[i] for i in range(len(s) - 1, -1, -1)])
+
+# Example usage:
+original_string = "Hello, World!"
+reversed_string = reverse_string(original_string)
+print(reversed_string)  # Output: !dlroW ,olleH
+```
+
+Each of these methods will effectively reverse the input string. The slicing method (`s[::-1]`) is generally the most concise and efficient approach[4][5].

@@ -70,6 +70,15 @@ def run_session(session_name):
         print(colored(f"Updated {session_name}", "cyan"))
 
 @cli.command()
+@click.argument("file_name", type=str)
+def run_file(file_name):
+    """Run a given file as a session"""
+    session = Session(file_name, is_session=False)
+    # run_session returns True if the session was correctly updated
+    if session.run_session():
+        print(colored(f"Updated {file_name}", "cyan"))
+
+@cli.command()
 @click.argument("query", type=str)
 def terminal(query):
     """
@@ -88,7 +97,11 @@ def terminal(query):
     
     messages = [{"role": "user", "content": full_query}]
     response = llm.query(messages=messages)
-    colored.cprint(response, "magenta")
+    print(colored(response, "magenta"))
+
+# adding from central_evaluator.py
+from evaluations.central_evaluator import evaluate as evaluate_command
+cli.add_command(evaluate_command, name="evaluate")
 
 if __name__ == "__main__":
     cli()

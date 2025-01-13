@@ -2,6 +2,10 @@
 
 A powerful Command-Line Interface (CLI) tool for interacting with various Language Learning Models (LLMs) such as OpenAI's GPT, Gemini, and Perplexity. Manage sessions, handle context, parse files, and seamlessly integrate with your workflow to enhance productivity and leverage the capabilities of cutting-edge LLMs directly from your terminal.
 
+Two use patterns:
+* Sessions which is based on. Initialised from the cli and then stored somewhere, where we also store the files that have been in the session.
+* The less "permanent" approach where we can run it from any .md file (and can be suppleid iwht yaml frontmatter for customisation) and files, searches will be retrieved ephemerally.
+
 ## Table of Contents
 
 - [Features](#features)

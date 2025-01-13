@@ -1,0 +1,25 @@
+To evaluate the integral of \(x^2\) from 0 to 3, you can use the formula for the indefinite integral of \(x^2\) and then apply the limits of integration.
+
+The indefinite integral of \(x^2\) is given by:
+\[
+\int x^2 \, dx = \frac{x^3}{3} + C
+\]
+where \(C\) is the constant of integration. However, for a definite integral, we do not need the constant \(C\).
+
+Using the formula for the definite integral:
+\[
+\int_{a}^{b} x^2 \, dx = \left[ \frac{x^3}{3} \right]_{a}^{b}
+\]
+Substitute \(a = 0\) and \(b = 3\):
+\[
+\int_{0}^{3} x^2 \, dx = \left[ \frac{x^3}{3} \right]_{0}^{3} = \frac{3^3}{3} - \frac{0^3}{3}
+\]
+Calculate the values:
+\[
+\frac{3^3}{3} - \frac{0^3}{3} = \frac{27}{3} - 0 = 9
+\]
+
+Therefore, the integral of \(x^2\) from 0 to 3 is:
+\[
+\int_{0}^{3} x^2 \, dx = 9
+\][5][3][4]

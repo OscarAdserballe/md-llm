@@ -1,0 +1,17 @@
+Okay, here's the gist of the Theory of Relativity, broken down simply:
+
+**Special Relativity (1905):**
+
+*   **The speed of light is constant:** No matter how fast you're moving, light always travels at the same speed (about 300,000 km/s). This is weird because normally, if you're moving towards something, it appears to be approaching faster.
+*   **Time and space are relative:** Because light speed is constant, time and space have to stretch or shrink depending on how fast you're moving. If you're moving very fast, time slows down for you relative to someone who's standing still, and distances appear shorter in the direction you're moving.
+*   **Mass and energy are equivalent:** The famous equation E=mc² means that mass can be converted into energy and vice-versa. A small amount of mass contains a HUGE amount of energy.
+
+**General Relativity (1915):**
+
+*   **Gravity is not a force, but a curvature of spacetime:** Massive objects warp the fabric of space and time around them, like a bowling ball on a trampoline. This curvature is what we perceive as gravity.
+*   **Time is affected by gravity:** The stronger the gravity, the slower time passes. This means time runs slightly slower at sea level than on a mountaintop.
+*   **Light bends around massive objects:** Because spacetime is curved, light rays also follow curved paths near massive objects like stars and black holes.
+
+**In short:**
+
+Relativity changed how we think about space and time. They're not absolute and fixed, but relative to the observer's motion and the presence of gravity.

@@ -1,0 +1,5 @@
+```
+9
+```
+
+The integral of x² is x³/3. Evaluating this from 0 to 3 gives (3³/3) - (0³/3) = 27/3 - 0 = 9.

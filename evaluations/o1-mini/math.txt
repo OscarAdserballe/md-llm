@@ -1,0 +1,35 @@
+To evaluate the definite integral of \( x^2 \) from 0 to 3, we can follow these steps:
+
+\[
+\int_{0}^{3} x^2 \, dx
+\]
+
+1. **Find the Indefinite Integral:**
+
+   The integral of \( x^2 \) with respect to \( x \) is:
+
+   \[
+   \int x^2 \, dx = \frac{1}{3}x^3 + C
+   \]
+
+   where \( C \) is the constant of integration.
+
+2. **Evaluate the Definite Integral:**
+
+   Apply the limits of integration from 0 to 3:
+
+   \[
+   \left[ \frac{1}{3}x^3 \right]_0^3 = \frac{1}{3}(3)^3 - \frac{1}{3}(0)^3
+   \]
+
+   \[
+   = \frac{1}{3}(27) - 0
+   \]
+
+   \[
+   = 9
+   \]
+
+**Final Answer:**
+
+The integral of \( x^2 \) from 0 to 3 is **9**.
