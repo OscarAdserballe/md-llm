@@ -58,7 +58,22 @@ o1_mini = LLMConfig(
     system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
     provider="openai"
 )
-
+o1_preview = LLMConfig(
+    model_name="o1-preview",
+    api_key=os.environ['OPENAI_API_KEY'],
+    temperature=0.5,
+    max_tokens=65536,
+    system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
+    provider="openai"
+)
+o1 = LLMConfig(
+    model_name="o1",
+    api_key=os.environ['OPENAI_API_KEY'],
+    temperature=0.5,
+    max_tokens=65536,
+    system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
+    provider="openai"
+)
 perplexity = LLMConfig(
     model_name="llama-3.1-sonar-large-128k-online",  
     api_key=os.environ['PERPLEXITY_API_KEY'],
@@ -72,6 +87,8 @@ perplexity = LLMConfig(
 SUPPORTED_MODELS = {
     "flash2" : flash2,
     "o1-mini" : o1_mini,
+    "o1" : o1,
+    "o1-preview" : o1_preview,
     "perplexity" : perplexity,
     "preprocess" : preprocess,
     "explainer" : explainer

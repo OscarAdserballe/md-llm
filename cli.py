@@ -8,26 +8,45 @@ from config import DEFAULT_MODEL, DEFAULT_SYSTEM_PROMPT_NAME, SESSIONS_DIR, SUPP
 from src.llm import LLM
 from src.session_manager import SessionManager
 from src.session import Session
+from prompts.prompts import PROMPTS
 
 from config_logger import logger
 
 @click.group()
 def cli():
+    """LLM CLI tool"""
     pass
 
 @cli.command()
-@click.argument("query", type=str)
+@click.argument('query', required=True)
 def query(query):
-    """Basic query"""
-    logger.debug('initialisign llm...')
+    """Send a query to the LLM"""
+    logger.debug('initialising llm...')
+
+    query = f"Query: {query}"
+
+    if not sys.stdin.isatty():
+        terminal_output = sys.stdin.read().strip()
+        query += f"\nTerminal context:\n{terminal_output}"
+
     llm = LLM(llm_config = SUPPORTED_MODELS[DEFAULT_MODEL])
+    llm.llm_config.system_prompt = PROMPTS['default']
 
-    messages = [{"role": "user", "content": f"{query}. Try to be concise and clear in your answer."}]
-    
-    response = llm.query(messages=messages) 
+    messages = [{"role": "user", "content": query}]
 
-    logger.debug(f'Got a response! {response}')
-    print(colored(response, "magenta"))
+    response_stream = llm.query(messages=messages, stream=True)
+
+    print(colored("Response: ", "cyan"), end="", flush=True)
+
+    try:
+        for chunk in response_stream:
+            if chunk.choices[0].delta.content is not None:
+                print(colored(chunk.choices[0].delta.content, "magenta"), end="", flush=True)
+        print()  # Add final newline
+       
+    except KeyboardInterrupt:
+        print("\nStreaming interrupted by user")
+        return
 
 @cli.command()
 def ls():
@@ -77,27 +96,6 @@ def run_file(file_name):
     # run_session returns True if the session was correctly updated
     if session.run_session():
         print(colored(f"Updated {file_name}", "cyan"))
-
-@cli.command()
-@click.argument("query", type=str)
-def terminal(query):
-    """
-    Query with terminal output as context. E.g. `echo "Hello, world" | llm terminal "What was the terminal context provided?"` Using 2>&1 at the end of the command will also capture stderr.
-    llm run-session test_session 2>&1 | llm terminal "can you explain this error"
-    """
-
-    # Get terminal output either from pipe or recent history
-    terminal_output = ""
-    if not sys.stdin.isatty():
-        terminal_output = sys.stdin.read().strip()
-    full_query = f"Terminal context:\n{terminal_output}\n\nQuery: {query}"
-    
-    llm = LLM(llm_config=SUPPORTED_MODELS[DEFAULT_MODEL])
-    logger.debug(f'LLM initialised with query {full_query}')
-    
-    messages = [{"role": "user", "content": full_query}]
-    response = llm.query(messages=messages)
-    print(colored(response, "magenta"))
 
 # adding from central_evaluator.py
 from evaluations.central_evaluator import evaluate as evaluate_command

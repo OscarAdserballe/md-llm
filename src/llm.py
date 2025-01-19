@@ -23,8 +23,8 @@ class LLM:
                 base_url=self.llm_config.base_url,
             )
 
-    def query(self, messages: list[dict]) -> str:
-        if self.llm_config.model_name == "o1-mini":
+    def query(self, messages: list[dict], stream: bool=False) -> str:
+        if self.llm_config.model_name in ["o1-mini", "o1", "o1-preview"]:
             full_messages = messages
         else: 
             full_messages = [{"role": "system", "content": self.llm_config.system_prompt}] + messages
@@ -35,8 +35,11 @@ class LLM:
             "messages": full_messages,
         }
 
+        if stream:
+            response_params["stream"] = True
+
         # o1-mini does not support these parameters
-        if self.llm_config.model_name != "o1-mini":
+        if self.llm_config.model_name not in ["o1-mini", "o1", "o1-preview"]:
             response_params["max_tokens"] = self.llm_config.max_tokens
             response_params["temperature"] = self.llm_config.temperature
 
@@ -49,4 +52,7 @@ class LLM:
             **response_params
         )
 
+        if stream:
+            return response
+    
         return response.choices[0].message.content
