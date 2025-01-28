@@ -9,7 +9,36 @@ from prompts.prompts import PROMPTS
 
 load_dotenv()
 
-DEFAULT_SYSTEM_PROMPT_NAME = "explain"
+LOGGING_DIR = Path("~/cli_llm/logs/").expanduser().resolve()
+LOGGING_LEVEL = logging.INFO
+
+SESSIONS_DIR = Path("~/Google Drive/My Drive/llm_sessions/").expanduser().resolve()
+
+# between sets of queries-and-responses
+DELIMITER = "=" * 20
+
+INTERNAL_CHAT_DELIMITER = "*ChatBot*: "
+
+ALLOWED_EXTENSIONS = {
+    '.txt', '.md', '.py', '.js', '.jsx', '.ts', '.tsx', 
+    '.html', '.css', '.json', '.yaml', '.yml', 
+    '.pdf', '.doc', '.docx', '.rtf', '.sql', '.sh', '.bash', '.zsh', '.fish',
+}
+EXCLUDED_DIRS = {'.git', '.venv', '__pycache__', 'node_modules', 'build', 'dist', 'env', 'bin', 'lib', 'include', 'share', 'tmp', 'temp', 'cache'}
+
+# Maximum tokens per file
+MAX_TOKENS = 100_000
+
+DEFAULT_METADATA = {
+    "created_at": datetime.now().isoformat(),
+    "llm_config": "flash2",
+    "files": [],
+    "search": [],
+    "current_tokens": 0,
+}
+
+DEFAULT_MODEL = 'flash2'
+DEFAULT_SYSTEM_PROMPT_NAME = "default"
 
 @dataclass
 class LLMConfig:
@@ -31,8 +60,26 @@ flash2 = LLMConfig(
     provider="gemini",
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
 )
+pro = LLMConfig(
+    model_name="gemini-exp-1206",
+    api_key=os.environ['GEMINI_API_KEY'],
+    temperature=0.5,
+    max_tokens=8000,
+    system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
+    provider="gemini",
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+)
+learn = LLMConfig(
+    model_name="learnlm-1.5-pro-experimental",
+    api_key=os.environ['GEMINI_API_KEY'],
+    temperature=0.5,
+    max_tokens=8000,
+    system_prompt="",
+    provider="gemini",
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+)
 explainer = LLMConfig(
-    model_name="gemini-2.0-flash-exp",
+    model_name="learnlm-1.5-pro-experimental",
     api_key=os.environ['GEMINI_API_KEY'],
     temperature=0.5,
     max_tokens=8000,
@@ -75,7 +122,7 @@ o1 = LLMConfig(
     provider="openai"
 )
 perplexity = LLMConfig(
-    model_name="llama-3.1-sonar-large-128k-online",  
+    model_name="sonar",  
     api_key=os.environ['PERPLEXITY_API_KEY'],
     temperature=0.5,
     max_tokens=8000,
@@ -91,36 +138,11 @@ SUPPORTED_MODELS = {
     "o1-preview" : o1_preview,
     "perplexity" : perplexity,
     "preprocess" : preprocess,
-    "explainer" : explainer
+    "explainer" : explainer,
+    "pro" : pro,
+    "learn" : learn,
 }
 
-DEFAULT_MODEL = 'flash2'
 
-LOGGING_DIR = Path("~/cli_llm/logs/").expanduser().resolve()
-LOGGING_LEVEL = logging.INFO
 
-SESSIONS_DIR = Path("~/Google Drive/My Drive/llm_sessions/").expanduser().resolve()
-
-# between sets of queries-and-responses
-DELIMITER = "=" * 20
-
-INTERNAL_CHAT_DELIMITER = "*ChatBot*: "
-
-ALLOWED_EXTENSIONS = {
-    '.txt', '.md', '.py', '.js', '.jsx', '.ts', '.tsx', 
-    '.html', '.css', '.json', '.yaml', '.yml', 
-    '.pdf', '.doc', '.docx', '.rtf', '.sql', '.sh', '.bash', '.zsh', '.fish',
-}
-EXCLUDED_DIRS = {'.git', '.venv', '__pycache__', 'node_modules', 'build', 'dist', 'env', 'bin', 'lib', 'include', 'share', 'tmp', 'temp', 'cache'}
-
-# Maximum tokens per file
-MAX_TOKENS = 100_000
-
-DEFAULT_METADATA = {
-    "created_at": datetime.now().isoformat(),
-    "llm_config": "flash2",
-    "files": [],
-    "search": [],
-    "current_tokens": 0,
-}
 
