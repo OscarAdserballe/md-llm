@@ -1,8 +1,7 @@
 from openai import OpenAI
-import base64
 from typing import List, Dict, Optional
-from pydantic import BaseModel
 from config_logger import logger
+from pathlib import Path
 from config import LLMConfig
 
 class LLM:
@@ -19,10 +18,27 @@ class LLM:
             )
 
     def query(self, messages: List[Dict[str, str]], stream: bool = False) -> Optional[str]:
+
+        ### Preparing Messages going into LLM ####
+        full_messages = []
+
         if self.llm_config.model_name not in ["o1-mini", "o1", "o1-preview"]:
-            full_messages = [{"role": "system", "content": self.llm_config.system_prompt}] + messages
-        else:
-            full_messages = messages
+            full_messages.append({"role": "system", "content": self.llm_config.system_prompt})
+
+        full_messages.extend(messages)
+
+
+        #### Preparing Response Parameters ####
+
+        # Example message:
+        # completion = client.beta.chat.completions.parse(
+        #     model="gemini-1.5-flash",
+        #     messages=[
+        #         {"role": "system", "content": "Extract the event information."},
+        #         {"role": "user", "content": "John and Susan are going to an AI conference on Friday."},
+        #     ],
+        #     response_format=CalendarEvent,
+        # )
 
         response_params = {
             "model": self.llm_config.model_name,
@@ -41,54 +57,27 @@ class LLM:
             response_params["tools"] = self.llm_config.tools
             response_params["tool_choice"] = "auto"
 
+        if self.llm_config.response_format:
+            response_params["response_format"] = self.llm_config.response_format
+
         try:
-            response = self.model.chat.completions.create(**response_params)
-            if stream:
-                return response
-            return response.choices[0].message.content
+            # If structured output, calling different method
+            if self.llm_config.response_format:
+                response = self.model.beta.chat.completions.parse(**response_params)
+                return response.choices[0].message.parsed
+            
+            # every other case
+            else:
+                response = self.model.chat.completions.create(**response_params)
+
+                # 1. Streaming case
+                if stream:
+                    return response
+                
+                # 2. Base case
+                return response.choices[0].message.content
+
         except Exception as e:
             self.logger.error(f"Error querying LLM: {e}")
-            return None
-
-    def encode_image(self, image_path: str) -> str:
-        with open(image_path, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode("utf-8")
-
-    def vision_query(self, image_path: str) -> Optional[str]:
-        base64_image = self.encode_image(image_path)
-        try:
-            response = self.model.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": "What is in this image?"},
-                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}},
-                        ],
-                    }
-                ],
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            self.logger.error(f"Error processing vision query: {e}")
-            return None
-
-    def structured_parse(
-        self, 
-        model_name: str, 
-        messages: List[Dict[str, str]], 
-        response_format: BaseModel
-    ) -> Optional[BaseModel]:
-        try:
-            client = OpenAI()
-            completion = client.beta.chat.completions.parse(
-                model=model_name,
-                messages=messages,
-                response_format=response_format,
-            )
-            return completion.choices[0].message.parsed
-        except Exception as e:
-            self.logger.error(f"Error in structured parsing: {e}")
             return None
 

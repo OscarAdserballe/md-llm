@@ -4,21 +4,26 @@ import logging
 from dataclasses import dataclass   
 from datetime import datetime
 from dotenv import load_dotenv
+import yaml
+from pydantic import BaseModel
+from enum import Enum
 
 from prompts.prompts import PROMPTS
 
 load_dotenv()
+# Load config from YAML
+with open(Path('~/cli_llm/config.yaml').expanduser().resolve(), 'r') as f:
+    yaml_config = yaml.safe_load(f)
 
-LOGGING_DIR = Path("~/cli_llm/logs/").expanduser().resolve()
-LOGGING_LEVEL = logging.INFO
+LOGGING_DIR = Path(yaml_config['logging']['dir']).expanduser().resolve()
+LOGGING_LEVEL = getattr(logging, yaml_config['logging']['level'])
 
-SESSIONS_DIR = Path("~/Google Drive/My Drive/llm_sessions/").expanduser().resolve()
+SESSIONS_DIR = Path(yaml_config['sessions']['dir']).expanduser().resolve()
 
 # between sets of queries-and-responses
 DELIMITER = "=" * 20
 
 INTERNAL_CHAT_DELIMITER = "*ChatBot*: "
-
 ALLOWED_EXTENSIONS = {
     '.txt', '.md', '.py', '.js', '.jsx', '.ts', '.tsx', 
     '.html', '.css', '.json', '.yaml', '.yml', 
@@ -50,6 +55,7 @@ class LLMConfig:
     provider: str = "openai"
     base_url: str | None = None
     tools: list[dict] | None = None 
+    response_format: type[BaseModel] | None = None
 
 flash2 = LLMConfig(
     model_name="gemini-2.0-flash-exp",
@@ -131,6 +137,93 @@ perplexity = LLMConfig(
     base_url="https://api.perplexity.ai"
 )
 
+from pydantic import BaseModel
+
+class QuestionnaireResponse(BaseModel):
+    q1_subscription_duration: int
+    q2_delivery_days: int
+    q3_reading_methods: list[int]
+    q4_time_spent: int
+    q5_preferred_subscription: int
+    q6_format_preference: int
+    q7_subscription_reasons: list[int]
+    q8_overall_satisfaction: int
+    q9_miss_if_not_read_agreement: int
+    q10_recommendation_likelihood: int
+    q11_renewal_likelihood: int
+    q12_website_visit_frequency: int
+    q13_trust_level: int
+    q14_new_app_usage: int
+    q15_listening_habits: int
+    q16_games_familiarity: int
+    q17_games_in_paper: int
+    q18_culture_best: list[int]
+    q19_existence_best: list[int]
+    q20_news_media_best: list[int]
+    q21_church_calendar_usage: int
+    q22_new_section: int
+    q23_new_section_desired: str
+    q24_member_advantages: int
+    q25_radio_tv_usage_daily: int
+    q26_radio_tv_usage_weekly: int
+    q27_digital_radio_tv_access: int
+    q28_gender: int
+    q29_age_group: int
+    q30_occupation: int
+    q31_occupation_field: str
+    q32_postcode: int
+    q33_share_reader_experience: int
+    q34_name: str
+    q35_address: str
+    q36_city: str
+    q37_email: str
+    q38_phone_number: str
+    q39_want_to_receive_offers: bool
+    q40_improvement_suggestions: str
+
+
+marketing_survey_object = LLMConfig(
+    model_name="gemini-2.0-flash-exp",
+    api_key=os.environ['GEMINI_API_KEY'],
+    temperature=0.5,
+    max_tokens=8000,
+    system_prompt="""
+    You are tasked with extracting content from unstructed pictures to structured output.
+    It is IMPERATIVE that,
+        1) You always fill out an answer - if you're unsure, just put 99 if an int field, or 'UNSURE' if string field,
+        2) Instead of giving the answer choice they circled, instead put the number corresponding to which option they choose. I.e. if they answer 3-5 years which is the third option for the first question, you should put down 3.
+        3) If they don't fill out an answer choice, just put in "UNFILLED" or 100. NEVER return a null value 
+
+    Be ABSOLUTELY SURE, that you do not fill out the content of the choices in multiple choice settings - ONLY AN INTEGER OR A LIST.
+
+    """,
+    provider="gemini",
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+    response_format=QuestionnaireResponse
+)
+marketing_survey_object_openai = LLMConfig(
+    model_name="gpt-4o",
+    api_key=os.environ['OPENAI_API_KEY'],
+    temperature=0.5,
+    max_tokens=8000,
+    system_prompt="""
+    You are tasked with extracting content from unstructed pictures to structured output.
+    It is IMPERATIVE that,
+        1) You always fill out an answer - if you're unsure, just put 99 if an int field, or 'UNSURE' if string field,
+        2) Instead of giving the answer choice they circled, instead put the number corresponding to which option they choose. I.e. if they answer 3-5 years which is the third option for the first question, you should put down 3.
+        3) If they don't fill out an answer choice, just put in "UNFILLED" or 100    
+
+    Be ABSOLUTELY SURE, that you do not fill out the content of the choices in multiple choice settings - ONLY AN INTEGER OR A LIST.
+    Take a chain of thought approach. For each option, count the number of options. Then, find the one that's somehow been marked by a pen and then note that number.
+
+    """,
+    provider="openai",
+    # base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+    response_format=QuestionnaireResponse
+)
+
+# llm --vision="/home/adserballe@kd3.int/Documents/GitHub/analysis/analysis/01-2025_marketing_survey/Læserundersøgelse/IMG_6530.HEIC" "what's contained in this image"
+
 SUPPORTED_MODELS = {
     "flash2" : flash2,
     "o1-mini" : o1_mini,
@@ -141,6 +234,8 @@ SUPPORTED_MODELS = {
     "explainer" : explainer,
     "pro" : pro,
     "learn" : learn,
+    "marketing" : marketing_survey_object,
+    "marketing_openai" : marketing_survey_object_openai
 }
 
 
