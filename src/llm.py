@@ -64,7 +64,7 @@ class LLM:
             # If structured output, calling different method
             if self.llm_config.response_format:
                 response = self.model.beta.chat.completions.parse(**response_params)
-                return response.choices[0].message.parsed
+                return response.choices[0].message.parsed.model_dump_json(indent=2)
             
             # every other case
             else:

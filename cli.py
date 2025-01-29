@@ -8,7 +8,7 @@ from config import DEFAULT_MODEL, DEFAULT_SYSTEM_PROMPT_NAME, SUPPORTED_MODELS, 
 from src.llm import LLM
 
 def get_image_message(image_path: str):
-    print(colored(f"Processing image: {image_path}", "cyan"))
+    # print(colored(f"Processing image: {image_path}", "cyan"))
     with open(image_path, "rb") as image_file:
         base64_image = base64.b64encode(image_file.read()).decode("utf-8")
     return {
@@ -20,13 +20,13 @@ def get_image_message(image_path: str):
             }
 
 def get_file_message(file_path: str):
-    print(colored(f"Processing file: {file_path}", "cyan"))
+    # print(colored(f"Processing file: {file_path}", "cyan"))
     with open(file_path, 'r') as f:
         file_content = f.read()
     return {"type": "text", "text": f"\nFile Content:\n\n {file_content}"}
 
 def get_terminal_message():
-    print(colored(f"Processing piped input", "cyan"))
+    # print(colored(f"Processing piped input", "cyan"))
     terminal_output = sys.stdin.read().strip()
     return {"type": "text", "text": f"\nTerminal context:\n{terminal_output}"}
 
