@@ -117,6 +117,15 @@ o3_mini = LLMConfig(
     system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
     provider="openai"
 )
+visualise = LLMConfig(
+    model_name="gemini-2.0-flash-exp",
+    api_key=os.environ['GEMINI_API_KEY'],
+    temperature=0.0,
+    max_tokens=8000,
+    system_prompt=PROMPTS['visualise'],
+    provider="gemini",
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+)
 
 o1 = LLMConfig(
     model_name="o1",
