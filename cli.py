@@ -46,8 +46,8 @@ def main_cli(ctx, query, prompt, model, temperature, vision, file):
        
         ##### Initialising LLM with config specified ##########
         llm_config = SUPPORTED_MODELS[model]
-        llm_config.system_prompt = PROMPTS[prompt]
-        llm_config.temperature = temperature
+        if prompt: llm_config.system_prompt = PROMPTS[prompt]
+        if temperature: llm_config.temperature = temperature
         llm = LLM(llm_config=llm_config)
 
 

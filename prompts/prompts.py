@@ -1,5 +1,22 @@
+from pathlib import Path
+import yaml
+
+# Load config from YAML
+with open(Path('~/cli_llm/config.yaml').expanduser().resolve(), 'r') as f:
+    yaml_config = yaml.safe_load(f)
+
+PROMPTS_DIR = Path(yaml_config['prompts']['dir']).expanduser().resolve()
+
+prompts = {}
+for file in PROMPTS_DIR.glob('*.md'):
+    with open(file, 'r') as f:
+        prompts[file.stem] = f.read()
+
 PROMPTS = {
-    # just using https://gist.github.com/audiojak/b7522f196365405f1ab41338658ef898
+    "report" : f"{prompts['research_prompt']}", 
+
+    "visualise" : f"{prompts['visualisation_prompt']}",
+
     "default" : """
     Don't give me high-level theory unless specifically requested. If I ask for a fix or explanation, provide actual code or a detailed explanation. No "Here's how you can..." responses.
 
@@ -82,7 +99,7 @@ Here are the files you should modify:
 
     "search" : """
     You are a web-search assistant, that is tasked with providing a person with up-to-date information on something that needs real-time information access
-    """
+    """,
 
 }
 

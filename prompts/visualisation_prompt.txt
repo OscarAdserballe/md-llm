@@ -1,0 +1,39 @@
+When you create graphs make sure they are very nice, clean and minimalistic. For example, most of the time make minimal gridlines according to the type of plot.
+
+########## Removing most gridlines #################
+# Set default font size to 16
+plt.rcParams.update({"font.size": "16"})
+
+# Set y limits and y ticks
+ax.set_ylim(0.3, 1.05)
+ax.set_yticks([0.4, 0.6, 0.8, 1.0])
+
+# Set x limits and x ticks
+ax.set_xlim(10, 95)
+ax.set_xticks([20, 40, 60, 80])
+
+# Remove tick marks on both x and y axes
+ax.yaxis.set_tick_params(length=0)
+ax.xaxis.set_tick_params(length=0)
+
+# Add grid lines, only for y axis
+ax.grid(axis="y")
+
+# Remove all spines but keep the bottom one
+ax.spines["left"].set_color("none")
+ax.spines["right"].set_color("none")
+ax.spines["top"].set_color("none")
+
+# And finally set labels
+ax.set_xlabel("Corruption Perceptions Index, 2015 (100 = least corrupt)")
+ax.set_ylabel("Human Development Index, 2015\n(1.0 = most developed)")
+
+
+
+################### Colour scheme #######################
+
+Make sure to use a nice colour scheme having htrough abotu it
+For example, here's a nice one:
+
+palette = ["#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2"] 
+

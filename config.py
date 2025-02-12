@@ -6,8 +6,6 @@ from datetime import datetime
 from dotenv import load_dotenv
 import yaml
 from pydantic import BaseModel
-from enum import Enum
-
 from prompts.prompts import PROMPTS
 
 load_dotenv()
@@ -36,13 +34,13 @@ MAX_TOKENS = 100_000
 
 DEFAULT_METADATA = {
     "created_at": datetime.now().isoformat(),
-    "llm_config": "flash2",
+    "llm_config": "flash",
     "files": [],
     "search": [],
     "current_tokens": 0,
 }
 
-DEFAULT_MODEL = 'flash2'
+DEFAULT_MODEL = 'flash'
 DEFAULT_SYSTEM_PROMPT_NAME = "default"
 
 @dataclass
@@ -57,7 +55,7 @@ class LLMConfig:
     tools: list[dict] | None = None 
     response_format: type[BaseModel] | None = None
 
-flash2 = LLMConfig(
+flash = LLMConfig(
     model_name="gemini-2.0-flash-exp",
     api_key=os.environ['GEMINI_API_KEY'],
     temperature=0.5,
@@ -72,6 +70,15 @@ pro = LLMConfig(
     temperature=0.5,
     max_tokens=8000,
     system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
+    provider="gemini",
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+)
+report = LLMConfig(
+    model_name="gemini-exp-1206",
+    api_key=os.environ['GEMINI_API_KEY'],
+    temperature=0.5,
+    max_tokens=8000,
+    system_prompt=PROMPTS["report"],
     provider="gemini",
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
 )
@@ -102,23 +109,15 @@ preprocess = LLMConfig(
     provider="gemini",
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
 )
+o3_mini = LLMConfig(
+    model_name="o3-mini",
+    api_key=os.environ['OPENAI_API_KEY'],
+    temperature=0.5,
+    max_tokens=100000,
+    system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
+    provider="openai"
+)
 
-o1_mini = LLMConfig(
-    model_name="o1-mini",
-    api_key=os.environ['OPENAI_API_KEY'],
-    temperature=0.5,
-    max_tokens=65536,
-    system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
-    provider="openai"
-)
-o1_preview = LLMConfig(
-    model_name="o1-preview",
-    api_key=os.environ['OPENAI_API_KEY'],
-    temperature=0.5,
-    max_tokens=65536,
-    system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
-    provider="openai"
-)
 o1 = LLMConfig(
     model_name="o1",
     api_key=os.environ['OPENAI_API_KEY'],
@@ -225,17 +224,18 @@ marketing_survey_object_openai = LLMConfig(
 # llm --vision="/home/adserballe@kd3.int/Documents/GitHub/analysis/analysis/01-2025_marketing_survey/Læserundersøgelse/IMG_6530.HEIC" "what's contained in this image"
 
 SUPPORTED_MODELS = {
-    "flash2" : flash2,
-    "o1-mini" : o1_mini,
+    "flash" : flash,
+    "flash2" : flash,
+    "o3-mini" : o3_mini,
     "o1" : o1,
-    "o1-preview" : o1_preview,
     "perplexity" : perplexity,
     "preprocess" : preprocess,
     "explainer" : explainer,
     "pro" : pro,
     "learn" : learn,
     "marketing" : marketing_survey_object,
-    "marketing_openai" : marketing_survey_object_openai
+    "marketing_openai" : marketing_survey_object_openai,
+    "report": report,
 }
 
 
