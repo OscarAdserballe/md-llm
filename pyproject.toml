@@ -17,10 +17,11 @@ pyyaml = "^6.0.2"
 tika = "^2.6.0"
 termcolor = "^2.5.0"
 python-dotenv = "^1.0.1"
+anthropic = "^0.22.1"
 
 [tool.poetry.scripts]
-llm = "cli.main_cli:main_cli"
-llm-session = "cli.session_cli:session_cli"
+llm = "cli_llm.cli:main_cli"
+llm-session = "cli_llm.session_cli:session_cli"
 
 [tool.poetry.group.dev.dependencies]
 pytest-mock = "^3.14.0"

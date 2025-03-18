@@ -18,6 +18,7 @@ Two use patterns:
     - [`llm create <session-name>`](#llm-create-session-name)
     - [`llm run_session <session-name>`](#llm-run_session-session-name)
     - [`llm terminal <query>`](#llm-terminal-query)
+    - [`llm --pdf -f <pdf_file>`](#llm---pdf--f-pdf_file)
 - [Folder Structure](#folder-structure)
 - [Components](#components)
   - [LLM](#llm)
@@ -31,10 +32,11 @@ Two use patterns:
 
 ## Features
 
-- **Multi-LLM Support**: Interact with various LLM providers like OpenAI, Gemini, and Perplexity.
+- **Multi-LLM Support**: Interact with various LLM providers like OpenAI, Gemini, Anthropic (Claude), and Perplexity.
 - **Session Management**: Create, list, and manage multiple sessions to organize your interactions.
 - **Context Handling**: Maintain conversation history and parse files to provide coherent and context-aware responses.
 - **File Parsing**: Automatically parse and process supported file types, with OCR fallback for scanned documents.
+- **PDF Processing**: Generate structured academic summaries from research papers using Apache Tika for text extraction and any LLM for analysis.
 - **Logging**: Comprehensive logging system for debugging and monitoring activities.
 - **Extensible Architecture**: Easily add support for new models and extend functionalities as needed.
 - **Secure Configuration**: Manage sensitive API keys and configurations using environment variables.
@@ -75,6 +77,7 @@ The application relies on environment variables to manage sensitive information 
 OPENAI_API_KEY=your_openai_api_key
 GEMINI_API_KEY=your_gemini_api_key
 PERPLEXITY_API_KEY=your_perplexity_api_key
+ANTHROPIC_API_KEY=your_anthropic_api_key
 ```
 
 Ensure you replace the placeholders with your actual API keys. The `.env` file should **not** be committed to version control for security reasons.
@@ -167,6 +170,34 @@ echo "Compilation error in module XYZ" | llm terminal "Can you explain this erro
 The compilation error in module XYZ indicates that there's a syntax issue in the code. Specifically, it might be missing a closing bracket or there's an unexpected indentation.
 ```
 
+#### `llm --pdf -f <pdf_file>`
+
+**Description:** Processes a PDF research paper and generates a structured academic summary. Uses Apache Tika to extract text from PDFs, making it compatible with all supported LLM models.
+
+**Usage:**
+
+```bash
+llm --pdf -f path/to/research-paper.pdf
+```
+
+**Options:**
+
+- `--output-dir <directory>`: Specify a custom output directory for the summary (default: ~/Google Drive/My Drive/Obsidian/Papers/)
+- `-m, --model <model>`: Specify which LLM model to use (any supported model works)
+- `-t, --temperature <value>`: Adjust the temperature for response creativity
+
+**Output:**
+
+A markdown file with a structured summary is created in the output directory. The summary includes:
+
+1. Context and Background
+2. Central Research Question(s)
+3. Core Contributions and Argumentation
+4. Literature Positioning
+5. Critical Appraisal
+6. Implications and Extensions
+7. Personal Perspective
+
 ### Examples
 
 1. **Basic Query**
@@ -186,6 +217,19 @@ The compilation error in module XYZ indicates that there's a syntax issue in the
 
    ```bash
    ls -la | llm terminal "What does this directory listing tell me?"
+   ```
+
+4. **Processing a Research Paper**
+
+   ```bash
+   # Using default model
+   llm --pdf -f ~/Downloads/research-paper.pdf
+   
+   # Using a specific model with custom temperature
+   llm --pdf -f ~/Downloads/research-paper.pdf -m flash2 -t 0.3
+   
+   # Specifying output directory and model
+   llm --pdf -f ~/Downloads/research-paper.pdf --output-dir ~/Obsidian/Papers -m claude
    ```
 
 ## Folder Structure
@@ -313,6 +357,11 @@ The CLI currently supports the following LLM models:
   - **Provider:** Perplexity
   - **Model Name:** `llama-3.1-sonar-large-128k-online`
   - **API Base URL:** `https://api.perplexity.ai`
+  
+- **Claude**
+  - **Provider:** Anthropic
+  - **Model Name:** `claude-3-7-sonnet-20250219`
+  - **API Base URL:** `https://api.anthropic.com/v1/`
 
 **Adding New Models:**
 

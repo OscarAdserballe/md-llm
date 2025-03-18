@@ -10,11 +10,12 @@ from prompts.prompts import PROMPTS
 
 load_dotenv()
 # Load config from YAML
-with open(Path('~/cli_llm/config.yaml').expanduser().resolve(), 'r') as f:
+with open(Path('~/Projects/cli_llm/config.yaml').expanduser().resolve(), 'r') as f:
     yaml_config = yaml.safe_load(f)
 
 LOGGING_DIR = Path(yaml_config['logging']['dir']).expanduser().resolve()
 LOGGING_LEVEL = getattr(logging, yaml_config['logging']['level'])
+DEFAULT_PAPERS_OUTPUT_DIR = Path("~/Google Drive/My Drive/Obsidian/Papers/").expanduser().resolve()
 
 SESSIONS_DIR = Path(yaml_config['sessions']['dir']).expanduser().resolve()
 
@@ -41,7 +42,7 @@ DEFAULT_METADATA = {
 }
 
 DEFAULT_MODEL = 'flash'
-DEFAULT_SYSTEM_PROMPT_NAME = "default"
+DEFAULT_SYSTEM_PROMPT_NAME = "default" # note, just an empty system prompt
 
 @dataclass
 class LLMConfig:
@@ -63,6 +64,15 @@ flash = LLMConfig(
     system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
     provider="gemini",
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+)
+claude = LLMConfig(
+    model_name="claude-3-7-sonnet-20250219",
+    api_key=os.environ['ANTHROPIC_API_KEY'],
+    temperature=0.5,
+    max_tokens=8000,
+    system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
+    provider="anthropic",
+    base_url="https://api.anthropic.com/v1/",
 )
 pro = LLMConfig(
     model_name="gemini-exp-1206",
@@ -125,6 +135,13 @@ visualise = LLMConfig(
     system_prompt=PROMPTS['visualise'],
     provider="gemini",
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+)
+chat_4_5 = LLMConfig(
+    model_name="gpt-4.5-preview",
+    api_key=os.environ['OPENAI_API_KEY'],
+    temperature=0.5,
+    system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
+    provider="openai"
 )
 
 o1 = LLMConfig(
@@ -245,6 +262,9 @@ SUPPORTED_MODELS = {
     "marketing" : marketing_survey_object,
     "marketing_openai" : marketing_survey_object_openai,
     "report": report,
+    "visualise": visualise,
+    "chatgpt": chat_4_5,
+    "claude": claude,
 }
 
 

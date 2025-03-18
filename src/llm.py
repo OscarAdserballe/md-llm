@@ -1,123 +1,48 @@
 from openai import OpenAI
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any, Union
 from config_logger import logger
 from pathlib import Path
 from config import LLMConfig
 import google.generativeai as genai
+import base64
+import anthropic
 
 REASONING_MODELS = ["o1-mini", "o1", "o1-preview", "o3-mini"]
 
-class LLM:
+class LLMProvider:
+    """Base class for different LLM providers"""
     def __init__(self, llm_config: LLMConfig):
         self.llm_config = llm_config
         self.logger = logger
 
-        if self.llm_config.provider == "openai":
-            self.model = OpenAI(api_key=self.llm_config.api_key)
-        else:
-            self.model = OpenAI(
+    def query(self, messages: List[Dict[str, Any]], stream: bool = False) -> Optional[Union[str, Any]]:
+        raise NotImplementedError("Subclasses must implement query method")
+
+    def prepare_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Prepare messages in the format expected by the provider"""
+        full_messages = []
+        
+        # Add system prompt if needed for this model
+        if self.llm_config.model_name not in REASONING_MODELS:
+            full_messages.append({"role": "system", "content": self.llm_config.system_prompt})
+            
+        full_messages.extend(messages)
+        return full_messages
+
+class OpenAIProvider(LLMProvider):
+    def __init__(self, llm_config: LLMConfig):
+        super().__init__(llm_config)
+        if self.llm_config.base_url:
+            self.client = OpenAI(
                 api_key=self.llm_config.api_key,
                 base_url=self.llm_config.base_url,
             )
+        else:
+            self.client = OpenAI(api_key=self.llm_config.api_key)
 
-    def query(self, messages: List[Dict[str, str]], stream: bool = False) -> Optional[str]:
-        # if self.llm_config.provider == "gemini":
-        #     return self.query_gemini(messages, stream)
-        #
-        # # Default to OpenAI which has the broadest api support
-        # else:
-        return self.query_openai(messages, stream)
+    def query(self, messages: List[Dict[str, Any]], stream: bool = False) -> Optional[Union[str, Any]]:
+        full_messages = self.prepare_messages(messages)
         
-    # WIP
-    def query_gemini(self, messages: List[Dict[str, str]], stream: bool = False) -> Optional[str]:
-        genai.configure(api_key=self.llm_config.api_key)
-        model = genai.get_model(self.llm_config.model_name)
-        
-        ### Preparing Messages going into LLM ####
-        full_messages = []
-
-        if self.llm_config.model_name not in REASONING_MODELS:
-            full_messages.append({"role": "system", "content": self.llm_config.system_prompt})
-
-        full_messages.extend(messages)
-
-
-        #### Preparing Response Parameters ####
-
-        # Example message:
-        # completion = client.beta.chat.completions.parse(
-        #     model="gemini-1.5-flash",
-        #     messages=[
-        #         {"role": "system", "content": "Extract the event information."},
-        #         {"role": "user", "content": "John and Susan are going to an AI conference on Friday."},
-        #     ],
-        #     response_format=CalendarEvent,
-        # )
-
-        response_params = {
-            "model": self.llm_config.model_name,
-            "n": 1,
-            "messages": full_messages,
-        }
-
-        if stream:
-            response_params["stream"] = True
-
-        if self.llm_config.model_name not in REASONING_MODELS:
-            response_params["max_tokens"] = self.llm_config.max_tokens
-            response_params["temperature"] = self.llm_config.temperature
-
-        if self.llm_config.tools:
-            response_params["tools"] = self.llm_config.tools
-            response_params["tool_choice"] = "auto"
-
-        if self.llm_config.response_format:
-            response_params["response_format"] = self.llm_config.response_format
-
-        try:
-            # If structured output, calling different method
-            if self.llm_config.response_format:
-                response = self.model.beta.chat.completions.parse(**response_params)
-                return response.choices[0].message.parsed.model_dump_json(indent=2)
-            
-            # every other case
-            else:
-                response = self.model.chat.completions.create(**response_params)
-
-                # 1. Streaming case
-                if stream:
-                    return response
-                
-                # 2. Base case
-                return response.choices[0].message.content
-
-        except Exception as e:
-            self.logger.error(f"Error querying LLM: {e}")
-            return None
-
-    def query_openai(self, messages: List[Dict[str, str]], stream: bool = False) -> Optional[str]:
-
-        ### Preparing Messages going into LLM ####
-        full_messages = []
-
-        if self.llm_config.model_name not in REASONING_MODELS:
-            full_messages.append({"role": "system", "content": self.llm_config.system_prompt})
-
-        full_messages.extend(messages)
-
-
-        #### Preparing Response Parameters ####
-
-        # Example message:
-        # completion = client.beta.chat.completions.parse(
-        #     model="gemini-1.5-flash",
-        #     messages=[
-        #         {"role": "system", "content": "Extract the event information."},
-        #         {"role": "user", "content": "John and Susan are going to an AI conference on Friday."},
-        #     ],
-        #     response_format=CalendarEvent,
-        # )
-
         response_params = {
             "model": self.llm_config.model_name,
             "n": 1,
@@ -144,12 +69,12 @@ class LLM:
         try:
             # If structured output, calling different method
             if self.llm_config.response_format:
-                response = self.model.beta.chat.completions.parse(**response_params)
+                response = self.client.beta.chat.completions.parse(**response_params)
                 return response.choices[0].message.parsed.model_dump_json(indent=2)
             
             # every other case
             else:
-                response = self.model.chat.completions.create(**response_params)
+                response = self.client.chat.completions.create(**response_params)
 
                 # 1. Streaming case
                 if stream:
@@ -159,6 +84,201 @@ class LLM:
                 return response.choices[0].message.content
 
         except Exception as e:
-            self.logger.error(f"Error querying LLM: {e}")
+            self.logger.error(f"Error querying OpenAI: {e}")
             return None
 
+class GeminiProvider(LLMProvider):
+    def __init__(self, llm_config: LLMConfig):
+        super().__init__(llm_config)
+        genai.configure(api_key=self.llm_config.api_key)
+        self.client = OpenAI(
+            api_key=self.llm_config.api_key,
+            base_url=self.llm_config.base_url,
+        )
+
+    def query(self, messages: List[Dict[str, Any]], stream: bool = False) -> Optional[Union[str, Any]]:
+        full_messages = self.prepare_messages(messages)
+        
+        response_params = {
+            "model": self.llm_config.model_name,
+            "n": 1,
+            "messages": full_messages,
+        }
+
+        if stream:
+            response_params["stream"] = True
+
+        if self.llm_config.model_name not in REASONING_MODELS:
+            response_params["max_tokens"] = self.llm_config.max_tokens
+            response_params["temperature"] = self.llm_config.temperature
+
+        if self.llm_config.tools:
+            response_params["tools"] = self.llm_config.tools
+            response_params["tool_choice"] = "auto"
+
+        if self.llm_config.response_format:
+            response_params["response_format"] = self.llm_config.response_format
+
+        try:
+            # If structured output, calling different method
+            if self.llm_config.response_format:
+                response = self.client.beta.chat.completions.parse(**response_params)
+                return response.choices[0].message.parsed.model_dump_json(indent=2)
+            
+            # every other case
+            else:
+                response = self.client.chat.completions.create(**response_params)
+
+                # 1. Streaming case
+                if stream:
+                    return response
+                
+                # 2. Base case
+                return response.choices[0].message.content
+
+        except Exception as e:
+            self.logger.error(f"Error querying Gemini: {e}")
+            return None
+
+class AnthropicProvider(LLMProvider):
+    def __init__(self, llm_config: LLMConfig):
+        super().__init__(llm_config)
+        self.client = anthropic.Anthropic(api_key=self.llm_config.api_key)
+    
+    def prepare_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Convert messages to Anthropic format"""
+        anthropic_messages = []
+        
+        # Add system prompt if provided
+        system_content = self.llm_config.system_prompt
+        
+        # Process user messages
+        for message in messages:
+            if message["role"] == "user":
+                content_items = []
+                if isinstance(message["content"], list):
+                    # Handle multimodal content
+                    for item in message["content"]:
+
+                        if isinstance(item, dict):
+
+                            if item.get("type") == "image_url":
+
+                                # Handle image
+                                image_url = item["image_url"]["url"]
+                                if image_url.startswith("data:image"):
+                                    # Extract base64 data
+                                    base64_data = image_url.split(",")[1]
+                                    content_items.append({
+                                        "type": "image",
+                                        "source": {
+                                            "type": "base64",
+                                            "media_type": "image/jpeg",
+                                            "data": base64_data
+                                        }
+                                    })
+
+                            elif item.get("type") == "text":
+                                content_items.append({
+                                    "type": "text",
+                                    "text": item["text"]
+                                })
+                else:
+
+                    # Simple text message
+                    content_items.append({
+                        "type": "text",
+                        "text": message["content"]
+                    })
+                
+                anthropic_messages.append({
+                    "role": "user",
+                    "content": content_items
+                })
+            elif message["role"] == "assistant":
+                anthropic_messages.append({
+                    "role": "assistant",
+                    "content": message["content"]
+                })
+        
+        return anthropic_messages
+    
+    def query(self, messages: List[Dict[str, Any]], stream: bool = False) -> Optional[str]:
+        anthropic_messages = self.prepare_messages(messages)
+        
+        response_params = {
+            "model": self.llm_config.model_name,
+            "max_tokens": self.llm_config.max_tokens,
+            "temperature": self.llm_config.temperature,
+            "messages": anthropic_messages,
+        }
+        
+        if self.llm_config.system_prompt:
+            response_params["system"] = self.llm_config.system_prompt
+            
+        try:
+            if stream:
+                response = self.client.messages.stream(**response_params)
+                return response
+            else:
+                response = self.client.messages.create(**response_params)
+                
+                # Extract text content from response
+                for block in response.content:
+                    if block.type == "text":
+                        return block.text
+                
+                return None
+        except Exception as e:
+            self.logger.error(f"Error querying Anthropic: {e}")
+            return None
+
+class LLM:
+    def __init__(self, llm_config: LLMConfig):
+        self.llm_config = llm_config
+        self.logger = logger
+        
+        # Initialize the appropriate provider based on config
+        if self.llm_config.provider == "openai":
+            self.provider = OpenAIProvider(llm_config)
+        elif self.llm_config.provider == "gemini":
+            self.provider = GeminiProvider(llm_config)
+        elif self.llm_config.provider == "anthropic":
+            self.provider = AnthropicProvider(llm_config)
+        elif self.llm_config.provider == "perplexity":
+            # Default to OpenAI provider since perplexity uses OpenAI-compatible API
+            self.provider = OpenAIProvider(llm_config)
+        else:
+            # Default to OpenAI for unknown providers
+            self.logger.warning(f"Unknown provider {self.llm_config.provider}, using OpenAI provider")
+            self.provider = OpenAIProvider(llm_config)
+
+    def query(self, messages: List[Dict[str, Any]], stream: bool = False) -> Optional[Union[str, Any]]:
+        """Query the LLM using the appropriate provider"""
+        return self.provider.query(messages, stream)
+    
+    def process_pdf(self, pdf_path: Path, prompt: str) -> Optional[str]:
+        """Process a PDF file using Tika"""
+        try:
+            # Use context_manager.parse_file function to extract text from PDF
+            from src.context_manager import ContextManager
+            context_manager = ContextManager(location=Path(".")
+                                          .absolute(), is_session=False)
+            
+            pdf_text = context_manager.parse_file(pdf_path)
+            if not pdf_text:
+                self.logger.error(f"Failed to extract text from PDF: {pdf_path}")
+                return None
+                
+            # Create message with PDF content
+            response = self.query([
+                {
+                    "role": "user",
+                    "content": f"PDF Content:\n\n{pdf_text}\n\n{prompt}"
+                }
+            ])
+            
+            return response
+        except Exception as e:
+            self.logger.error(f"Error processing PDF: {e}")
+            return None
