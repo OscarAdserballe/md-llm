@@ -2,37 +2,15 @@
 import click
 from termcolor import colored
 import sys
-import base64
 from pathlib import Path
-import os
+from time import sleep
 
-from config import DEFAULT_MODEL, DEFAULT_SYSTEM_PROMPT_NAME, SUPPORTED_MODELS, PROMPTS, DEFAULT_PAPERS_OUTPUT_DIR
+from config import DEFAULT_MODEL, DEFAULT_SYSTEM_PROMPT_NAME, SUPPORTED_MODELS, PROMPTS
 from src.llm import LLM
-
-# Default output directory for paper summaries
-
-def get_image_message(image_path: str):
-    # print(colored(f"Processing image: {image_path}", "cyan"))
-    with open(image_path, "rb") as image_file:
-        base64_image = base64.b64encode(image_file.read()).decode("utf-8")
-    return {
-            "type": "image_url",
-            "image_url": {
-                "url": f"data:image/jpeg;base64,{base64_image}",
-                # "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg",
-                },
-            }
-
-def get_file_message(file_path: str):
-    # print(colored(f"Processing file: {file_path}", "cyan"))
-    with open(file_path, 'r') as f:
-        file_content = f.read()
-    return {"type": "text", "text": f"\nFile Content:\n\n {file_content}"}
-
-def get_terminal_message():
-    # print(colored(f"Processing piped input", "cyan"))
-    terminal_output = sys.stdin.read().strip()
-    return {"type": "text", "text": f"\nTerminal context:\n{terminal_output}"}
+from src.response_handler import ResponseHandler
+from src.file_processor import FileProcessor
+from src.vector_store import VectorStore
+from src.search_service import SearchService
 
 ### CLI ######
 
@@ -43,100 +21,130 @@ def get_terminal_message():
 @click.option('-m', '--model', type=click.Choice(list(SUPPORTED_MODELS.keys())), default=DEFAULT_MODEL, help='Select LLM model')
 @click.option('-t', '--temperature', type=float, default=0.5, help='Set the temperature for response creativity')
 @click.option('-v', '--vision', type=click.Path(exists=True), help='Path to image for vision query')
-@click.option('-f', '--file', type=click.Path(exists=True), help='Path to file to process')
-@click.option('--pdf', is_flag=True, help='Process file as a PDF research paper and generate summary')
-def main_cli(ctx, query, prompt, model, temperature, vision, file, pdf):
+@click.option('-f', '--file', type=click.Path(exists=True), help='Path to file or directory to process')
+@click.option('-s', '--syllabus', type=click.Path(exists=True), help='Path to file or directory to process in addition to other files. No dirs supported')
+@click.option('-o', '--output', type=str, help='Output destination (obsidian_papers, file, or directory path)')
+@click.option('--force', is_flag=True, help='Force overwrite existing output files')
+@click.option('--no-store', is_flag=True, help='Do not store this interaction in the vector database')
+def main_cli(ctx, query, prompt, model, temperature, vision, file, output, force, no_store, syllabus):
     """LLM CLI tool - running without subcommand acts as basic query"""
     if ctx.invoked_subcommand is None:
-        # PDF paper processing mode
-        if pdf and file:
-            if not file.lower().endswith('.pdf'):
-                print(colored("Error: File must be a PDF when using --pdf flag", "red"))
+        # Initialize services
+        file_processor = FileProcessor()
+        
+        # Initialize LLM with config
+        llm_config = SUPPORTED_MODELS[model]
+        if prompt: 
+            llm_config.system_prompt = PROMPTS[prompt]
+        if temperature: 
+            llm_config.temperature = temperature
+        
+        llm = LLM(llm_config=llm_config)
+        # Note, disabling vector store for now
+        response_handler = ResponseHandler(model, force_overwrite=force, store_in_db=False)
+        
+        # File or directory processing mode
+        if file:
+
+            # slighly ugly implementation for now; syllabus only processed if there's a file
+
+            if syllabus:
+                syllabus_file = file_processor.get_files_from_path(syllabus)
+
+
+            files = file_processor.get_files_from_path(file)
+            
+            if not files:
+                print(colored(f"No processable files found in {file}", "red"))
                 return
                 
-            # Use the claude model for PDF processing if not otherwise specified
-            if model == DEFAULT_MODEL and SUPPORTED_MODELS.get("claude"):
-                model = "claude"
-                print(colored(f"Using Claude model for PDF processing", "cyan"))
-            
-            # Note: Now all models support PDF processing using Tika
-
-            output_path = DEFAULT_PAPERS_OUTPUT_DIR
+            for file_path in files:
+                print(colored(f"Processing file: {file_path}", "cyan"))
                 
-            # Initialize LLM
-            llm_config = SUPPORTED_MODELS[model]
-            llm_config.temperature = temperature
-            llm = LLM(llm_config=llm_config)
-            
-            # Process the PDF
-            file_path = Path(file).resolve()
-            print(colored(f"Processing PDF paper with {model} using Tika: {file_path}", "cyan"))
-            summary = llm.process_pdf(file_path, PROMPTS['paper_summary'])
-
-            out_filename = f"summary_{file_path.stem}.md"
-            out_path = output_path / f"{model}_{out_filename}"
-            
-            with open(out_path, "w", encoding="utf-8") as f:
-                f.write(summary)
-                
-            print(colored(f"Summary written to {out_path}", "green"))
+                if file_path.suffix.lower() == '.pdf':
+                    summary = llm.process_pdf(file_path, PROMPTS.get(prompt, ""))
+                    if summary:
+                        response_handler.handle_response(summary, output, file_path)
+                    
+                    # to get around tight rate limits from e.g. Gemini pro 2.5
+                    sleep(30)
+                else:
+                    # Regular file processing
+                    try:
+                        content = file_processor.process_text_file(str(file_path))
+                        
+                        # Check if the file was too large
+                        if "[File too large" in content['text']:
+                            print(colored(content['text'], "yellow"))
+                            continue
+                            
+                        # Prepare query and get response
+                        prompt_text = f"{content['text']}\n\n{PROMPTS.get(prompt, '')}"
+                        messages = [{"role": "user", "content": prompt_text}]
+                        response = llm.query(messages=messages)
+                        response_handler.handle_response(response, output, file_path, query=prompt_text)
+                    except Exception as e:
+                        print(colored(f"Error processing file {file_path}: {e}", "red"))
             
             return
             
         # Regular query mode
         elif query:
-            ##### Initialising LLM with config specified ##########
-            llm_config = SUPPORTED_MODELS[model]
-            if prompt: llm_config.system_prompt = PROMPTS[prompt]
-            if temperature: llm_config.temperature = temperature
-            llm = LLM(llm_config=llm_config)
-
-            ###### Loading in messages ######################
+            # Loading message content
             llm_content = []
            
-            # loading in file contents
-            if file:
-                llm_content.append(get_file_message(file)) 
-
-            # loading in piped input
+            # Add terminal input if available
             if not sys.stdin.isatty():
-                llm_content.append(get_terminal_message())       
+                llm_content.append(file_processor.process_terminal_input())
 
+            # Add the user's query
             llm_content.append({"type": "text", "text": f"\nQuery\n: {query}"})
 
-            # loading in image contents
+            # Add image if specified
             if vision:
-                llm_content.append(get_image_message(vision)) 
+                llm_content.append(file_processor.process_image(vision))
 
+            # Create the messages for the LLM
             messages = [{"role": "user", "content": llm_content}]
 
-            #### Streaming the output based on context string and model constructed ######
-            # special case if structured output - cannot stream
-            if llm.llm_config.response_format or vision:
-                response = llm.query(messages=messages)
-                print(response)
+            # Process the query and get response
+            try:
+                # Special case for structured output or vision - cannot stream
+                if llm.llm_config.response_format or vision:
+                    response = llm.query(messages=messages)
+                    response_handler.handle_response(response, output, query=query)
+                    return
+                
+                # Handle provider-specific behavior
+                if llm.llm_config.provider == "anthropic":
+                    print(colored("Streaming not supported for Anthropic models", "red"))
+                    response = llm.query(messages=messages)
+                    response_handler.handle_response(response, output, query=query)
+                else:
+                    # For other providers (OpenAI/Gemini)
+                    if output:
+                        # If output destination specified, don't stream
+                        response = llm.query(messages=messages)
+                        response_handler.handle_response(response, output, query=query)
+                    else:
+                        # Stream to terminal
+                        response_stream = llm.query(messages=messages, stream=True)
+                        for chunk in response_stream:
+                            if hasattr(chunk, 'choices') and hasattr(chunk.choices[0], 'delta'):
+                                if chunk.choices[0].delta.content is not None:
+                                    print(colored(chunk.choices[0].delta.content, "magenta"), end="", flush=True)
+                        print()  # Final newline
+
+            except KeyboardInterrupt:
+                print("\nStreaming interrupted by user")
                 return
-
-            else:
-                response_stream = llm.query(messages=messages, stream=True)
-
-                try:
-                    for chunk in response_stream:
-                        if hasattr(chunk, 'choices') and hasattr(chunk.choices[0], 'delta'):
-                            if chunk.choices[0].delta.content is not None:
-                                print(colored(chunk.choices[0].delta.content, "magenta"), end="", flush=True)
-                    print()  # Final newline
-
-                except KeyboardInterrupt:
-                    print("\nStreaming interrupted by user")
-                    return
-                except Exception as e:
-                    print(colored(f"\nError during streaming: {e}", "red"))
-                    return
-
-        # falling back on this in case of user input error
+            except Exception as e:
+                print(colored(f"\nError during query: {e}", "red"))
+                return
+        
+        # Usage information if no valid input provided
         else:
-            print(colored("Usage: `llm <args> <query>` or `llm --pdf -f <pdf_file>`", "red"))
+            print(colored("Usage: `llm <args> <query>` or `llm -f <file_or_directory> -o <output_destination>`", "red"))
 
 @main_cli.command()
 def supported_models():
@@ -144,8 +152,34 @@ def supported_models():
     print(colored("Supported Models:", "cyan", attrs=["bold"]))
     for model, config in SUPPORTED_MODELS.items():
         provider = config.provider
-        supports_pdf = "✓" if provider == "anthropic" else "✗"
-        print(colored(f"- {model} ({provider}, PDF: {supports_pdf})", "green"))
+        print(colored(f"- {model} ({provider})", "green"))
+
+@main_cli.command()
+@click.argument('search_query')
+@click.option('--limit', '-l', type=int, default=5, help='Maximum number of results to return')
+@click.option('--detailed', '-d', is_flag=True, help='Show detailed results including full responses')
+@click.option('--min-similarity', type=float, default=0.7, help='Minimum similarity score (0.0-1.0)')
+def search(search_query, limit, detailed, min_similarity):
+    """Search previous interactions for similar queries or content"""
+    try:
+        # Initialize search service
+        search_service = SearchService()
+        
+        print(colored(f"Searching for: {search_query}", "cyan"))
+        results = search_service.search(
+            query=search_query,
+            limit=limit,
+            min_similarity=min_similarity
+        )
+        
+        # Format and display results
+        formatted_results = search_service.format_results(results, detailed=detailed)
+        print(formatted_results)
+        
+    except Exception as e:
+        print(colored(f"Error during search: {e}", "red"))
+        if "ChromaDB" in str(e):
+            print(colored("Tip: You may need to install chromadb with 'pip install chromadb'", "yellow"))
 
 if __name__ == "__main__":
     main_cli()

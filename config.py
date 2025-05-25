@@ -55,9 +55,20 @@ class LLMConfig:
     base_url: str | None = None
     tools: list[dict] | None = None 
     response_format: type[BaseModel] | None = None
+    extended_thinking: bool | None = None 
+    budget_tokens: int | None = None # budget for thinking tokens
 
 flash = LLMConfig(
-    model_name="gemini-2.0-flash-exp",
+    model_name="gemini-2.0-flash",
+    api_key=os.environ['GEMINI_API_KEY'],
+    temperature=0.5,
+    max_tokens=8000,
+    system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
+    provider="gemini",
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+)
+flash_thinking = LLMConfig(
+    model_name="gemini-2.5-flash-preview-04-17",
     api_key=os.environ['GEMINI_API_KEY'],
     temperature=0.5,
     max_tokens=8000,
@@ -66,7 +77,7 @@ flash = LLMConfig(
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
 )
 claude = LLMConfig(
-    model_name="claude-3-7-sonnet-20250219",
+    model_name="claude-sonnet-4-20250514",
     api_key=os.environ['ANTHROPIC_API_KEY'],
     temperature=0.5,
     max_tokens=8000,
@@ -74,11 +85,22 @@ claude = LLMConfig(
     provider="anthropic",
     base_url="https://api.anthropic.com/v1/",
 )
+claude_thinking = LLMConfig(
+    model_name="claude-3-7-sonnet-20250219",
+    api_key=os.environ['ANTHROPIC_API_KEY'],
+    temperature=0.5,
+    max_tokens=16000,
+    system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
+    extended_thinking=True,
+    provider="anthropic",
+    base_url="https://api.anthropic.com/v1/",
+    budget_tokens=4000
+)
 pro = LLMConfig(
-    model_name="gemini-exp-1206",
+    model_name="gemini-2.5-pro-preview-05-06",
     api_key=os.environ['GEMINI_API_KEY'],
     temperature=0.5,
-    max_tokens=8000,
+    max_tokens=32000,
     system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
     provider="gemini",
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
@@ -251,6 +273,7 @@ marketing_survey_object_openai = LLMConfig(
 
 SUPPORTED_MODELS = {
     "flash" : flash,
+    "flash_thinking" : flash_thinking,
     "flash2" : flash,
     "o3-mini" : o3_mini,
     "o1" : o1,
@@ -265,6 +288,7 @@ SUPPORTED_MODELS = {
     "visualise": visualise,
     "chatgpt": chat_4_5,
     "claude": claude,
+    "claude_thinking": claude_thinking,
 }
 
 

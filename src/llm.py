@@ -38,7 +38,7 @@ class OpenAIProvider(LLMProvider):
                 base_url=self.llm_config.base_url,
             )
         else:
-            self.client = OpenAI(api_key=self.llm_config.api_key)
+           self.client = OpenAI(api_key=self.llm_config.api_key)
 
     def query(self, messages: List[Dict[str, Any]], stream: bool = False) -> Optional[Union[str, Any]]:
         full_messages = self.prepare_messages(messages)
@@ -149,13 +149,12 @@ class AnthropicProvider(LLMProvider):
         """Convert messages to Anthropic format"""
         anthropic_messages = []
         
-        # Add system prompt if provided
-        system_content = self.llm_config.system_prompt
-        
         # Process user messages
         for message in messages:
+
             if message["role"] == "user":
                 content_items = []
+
                 if isinstance(message["content"], list):
                     # Handle multimodal content
                     for item in message["content"]:
@@ -196,6 +195,7 @@ class AnthropicProvider(LLMProvider):
                     "content": content_items
                 })
             elif message["role"] == "assistant":
+
                 anthropic_messages.append({
                     "role": "assistant",
                     "content": message["content"]
@@ -216,21 +216,29 @@ class AnthropicProvider(LLMProvider):
         if self.llm_config.system_prompt:
             response_params["system"] = self.llm_config.system_prompt
             
-        try:
-            if stream:
-                response = self.client.messages.stream(**response_params)
-                return response
-            else:
-                response = self.client.messages.create(**response_params)
+        # Add extended thinking parameters if enabled
+        if self.llm_config.extended_thinking:
+            response_params['temperature'] = 1 # must be set to 1 for extended thinking
+            response_params["thinking"] = {
+                "type": "enabled",
+                "budget_tokens": self.llm_config.budget_tokens, 
+            }
+            
+        if stream:
+            response = self.client.messages.stream(**response_params)
+            return response
+        else:
+            response = self.client.messages.create(**response_params)
+            
+            # Extract text content from response
+            for block in response.content:
+                if block.type == "text":
+                    return block.text
                 
-                # Extract text content from response
-                for block in response.content:
-                    if block.type == "text":
-                        return block.text
-                
-                return None
-        except Exception as e:
-            self.logger.error(f"Error querying Anthropic: {e}")
+                if block.type == "thinking":
+                    print("Thinking Block...")
+                    print(block.thinking)
+            
             return None
 
 class LLM:
@@ -258,17 +266,22 @@ class LLM:
         return self.provider.query(messages, stream)
     
     def process_pdf(self, pdf_path: Path, prompt: str) -> Optional[str]:
-        """Process a PDF file using Tika"""
+        """Process a PDF file and generate a response based on its content"""
         try:
-            # Use context_manager.parse_file function to extract text from PDF
-            from src.context_manager import ContextManager
-            context_manager = ContextManager(location=Path(".")
-                                          .absolute(), is_session=False)
+            # Import file processor here to avoid circular imports
+            from src.file_processor import FileProcessor
+            processor = FileProcessor()
             
-            pdf_text = context_manager.parse_file(pdf_path)
+            # Extract text from PDF
+            pdf_text = processor.extract_pdf_text(pdf_path)
             if not pdf_text:
                 self.logger.error(f"Failed to extract text from PDF: {pdf_path}")
                 return None
+                
+            # Check if we got a token limit error message
+            if pdf_text.startswith("[PDF too large"):
+                self.logger.warning(f"PDF {pdf_path} skipped due to token limit")
+                return f"Could not process {pdf_path.name}: {pdf_text}"
                 
             # Create message with PDF content
             response = self.query([
