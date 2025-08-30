@@ -46,7 +46,7 @@ DEFAULT_METADATA = {
 }
 
 DEFAULT_MODEL = 'flash'
-DEFAULT_SYSTEM_PROMPT_NAME = "default" # note, just an empty system prompt
+DEFAULT_SYSTEM_PROMPT_NAME = "default" 
 
 @dataclass
 class LLMConfig:
@@ -67,7 +67,7 @@ flash = LLMConfig(
     api_key=os.environ['GEMINI_API_KEY'],
     temperature=0.5,
     max_tokens=8000,
-    system_prompt=PROMPTS["pro"],
+    system_prompt=PROMPTS["default"],
     provider="gemini",
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
 )
@@ -85,7 +85,7 @@ pro = LLMConfig(
     api_key=os.environ['GEMINI_API_KEY'],
     temperature=0.5,
     max_tokens=32000,
-    system_prompt=PROMPTS["pro"],
+    system_prompt=PROMPTS["default"],
     provider="gemini",
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
 )

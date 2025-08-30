@@ -17,7 +17,7 @@ from src.search_service import SearchService
 @click.group(invoke_without_command=True)
 @click.pass_context
 @click.argument('query', required=False)
-@click.option('-p', '--prompt', type=click.Choice(list(PROMPTS.keys())), default=DEFAULT_SYSTEM_PROMPT_NAME, help='Select system prompt')
+@click.option('-p', '--prompt', type=click.Choice(list(PROMPTS.keys())), default="cli", help='Select system prompt')
 @click.option('-m', '--model', type=click.Choice(list(SUPPORTED_MODELS.keys())), default=DEFAULT_MODEL, help='Select LLM model')
 @click.option('-t', '--temperature', type=float, default=0.5, help='Set the temperature for response creativity')
 @click.option('-v', '--vision', type=click.Path(exists=True), help='Path to image for vision query')
