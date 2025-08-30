@@ -7,34 +7,56 @@ import tiktoken
 from config import DEFAULT_METADATA, SESSIONS_DIR, DELIMITER, INTERNAL_CHAT_DELIMITER, SUPPORTED_MODELS, DEFAULT_MODEL
 from src.context_manager import ContextManager
 from src.llm import LLM
+from prompts.prompts import PROMPTS
 
 class Session:
     def __init__(self, session_name:str, is_session:bool=True):
         self.session_name = session_name
+        self.logger = logger
 
         if not is_session:
             self.session_file = Path(session_name).expanduser().resolve()
+            if not self.session_file.exists():
+                raise FileNotFoundError(f"File specified for run_file not found: {self.session_file}")
             self.session_dir = self.session_file.parent
             self.md_file = self.session_file
-        else: # otherwise, assume it's a session
+        else: 
             self.session_dir = Path(SESSIONS_DIR) / session_name
             self.md_file = self.session_dir / f"{session_name}.md"
 
-        self.metadata, self.latest_query, self.chat_history = self.load_session()
+        # Load session data: metadata, chat history. Images are handled by ContextManager via 'files' key.
+        loaded_metadata, self.latest_query, self.chat_history = self.load_session_core()
+        self.metadata = loaded_metadata
         
-        # passing query and chat_history from ContextManager
         self.context = ContextManager(
             location=self.session_dir,
-            files=self.metadata.get('files', []),
+            files=self.metadata.get('files', []), # 'files' now handles text and images
             search=self.metadata.get('search', []),
+            # images parameter removed
             query=self.latest_query,
             chat_history=self.chat_history,
+            is_session=is_session
         )
-        self.llm_config = SUPPORTED_MODELS[self.metadata.get('llm_config', DEFAULT_MODEL)]
+        self.llm_config_name = self.metadata.get('llm_config', DEFAULT_MODEL)
+        if self.llm_config_name not in SUPPORTED_MODELS:
+            self.logger.warning(
+                f"LLM config '{self.llm_config_name}' not found in SUPPORTED_MODELS. "
+                f"Falling back to default model '{DEFAULT_MODEL}'."
+            )
+            self.llm_config_name = DEFAULT_MODEL
+            self.metadata['llm_config'] = DEFAULT_MODEL
+
+        self.system_prompt_name = self.metadata.get('prompt', 'default')
+        
+        self.llm_config = SUPPORTED_MODELS[self.llm_config_name]
+
+        if self.system_prompt_name in PROMPTS:
+            self.logger.info(f"Using system prompt '{self.system_prompt_name}'")
+            self.llm_config.system_prompt = PROMPTS[self.system_prompt_name]
+
         self.llm = LLM(
-            llm_config=SUPPORTED_MODELS[self.metadata.get('llm_config', DEFAULT_MODEL)]   # default to flash2 
+            llm_config=SUPPORTED_MODELS[self.llm_config_name]
         )
-        self.logger = logger
 
     def count_tokens(self, text) -> int:
         """Count tokens in text using tiktoken"""
@@ -81,23 +103,36 @@ class Session:
 
         return latest_query, chat_history
 
-    def load_session(self) -> Tuple[Dict, str, list[dict]]:
+    def load_session_core(self) -> Tuple[Dict, str, list[dict]]:
         if not self.md_file.exists():
-            raise FileNotFoundError(f"Session {self.session_name} not found")
+            self.logger.error(f"Session markdown file {self.md_file} not found.")
+            return DEFAULT_METADATA.copy(), "", []
 
-        with self.md_file.open('r') as f:
+        with self.md_file.open('r', encoding='utf-8') as f:
             content = f.read()
-            # Extract YAML metadata between first --- markers
-            if content.startswith('---'):
-                _, _metadata, _content = content.split('---', 2) # max twice to ensure not out of index.
-                
-                metadata = yaml.safe_load(_metadata)
-                latest_query, chat_history = self.parse_chat_history(_content)
+            
+        metadata = DEFAULT_METADATA.copy()
+        _content_for_chat = content 
 
+        if content.startswith('---'):
+            parts = content.split('---', 2)
+            if len(parts) == 3:
+                _, _metadata_str, _content_after_yaml = parts
+                try:
+                    loaded_meta = yaml.safe_load(_metadata_str)
+                    if loaded_meta is not None: 
+                        metadata.update(loaded_meta)
+                    _content_for_chat = _content_after_yaml
+                except yaml.YAMLError as e:
+                    self.logger.error(f"Error parsing YAML metadata in {self.session_name}: {e}. Using default metadata for YAML block, chat content follows.")
+                    _content_for_chat = _content_after_yaml 
             else:
-                metadata = DEFAULT_METADATA
-                latest_query, chat_history = self.parse_chat_history(content)
-
+                self.logger.warning(f"Malformed YAML frontmatter in {self.session_name}. Content after first '---' will be parsed as chat.")
+                _content_for_chat = parts[1] if len(parts) > 1 else ""
+        
+        # images_from_yaml logic removed here
+            
+        latest_query, chat_history = self.parse_chat_history(_content_for_chat)
 
         return metadata, latest_query, chat_history
 
@@ -110,7 +145,7 @@ class Session:
 
         response = self.llm.query(messages=messages)
 
-        self.logger.info(f"Using model {self.llm_config.model_name} to generate response...")
+        self.logger.info(f"Using model {self.llm_config_name} to generate response...")
 
         with self.md_file.open('r') as f:
             content = f.read()

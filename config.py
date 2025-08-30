@@ -33,12 +33,16 @@ EXCLUDED_DIRS = {'.git', '.venv', '__pycache__', 'node_modules', 'build', 'dist'
 # Maximum tokens per file
 MAX_TOKENS = 100_000
 
+# Supported image extensions
+IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
+
 DEFAULT_METADATA = {
     "created_at": datetime.now().isoformat(),
     "llm_config": "flash",
     "files": [],
     "search": [],
     "current_tokens": 0,
+    "prompt": "default"
 }
 
 DEFAULT_MODEL = 'flash'
@@ -59,20 +63,11 @@ class LLMConfig:
     budget_tokens: int | None = None # budget for thinking tokens
 
 flash = LLMConfig(
-    model_name="gemini-2.0-flash",
+    model_name="gemini-2.5-flash",
     api_key=os.environ['GEMINI_API_KEY'],
     temperature=0.5,
     max_tokens=8000,
-    system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
-    provider="gemini",
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-)
-flash_thinking = LLMConfig(
-    model_name="gemini-2.5-flash-preview-04-17",
-    api_key=os.environ['GEMINI_API_KEY'],
-    temperature=0.5,
-    max_tokens=8000,
-    system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
+    system_prompt=PROMPTS["pro"],
     provider="gemini",
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
 )
@@ -85,23 +80,12 @@ claude = LLMConfig(
     provider="anthropic",
     base_url="https://api.anthropic.com/v1/",
 )
-claude_thinking = LLMConfig(
-    model_name="claude-3-7-sonnet-20250219",
-    api_key=os.environ['ANTHROPIC_API_KEY'],
-    temperature=0.5,
-    max_tokens=16000,
-    system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
-    extended_thinking=True,
-    provider="anthropic",
-    base_url="https://api.anthropic.com/v1/",
-    budget_tokens=4000
-)
 pro = LLMConfig(
-    model_name="gemini-2.5-pro-preview-05-06",
+    model_name="gemini-2.5-pro",
     api_key=os.environ['GEMINI_API_KEY'],
     temperature=0.5,
     max_tokens=32000,
-    system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
+    system_prompt=PROMPTS["pro"],
     provider="gemini",
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
 )
@@ -114,17 +98,8 @@ report = LLMConfig(
     provider="gemini",
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
 )
-learn = LLMConfig(
-    model_name="learnlm-1.5-pro-experimental",
-    api_key=os.environ['GEMINI_API_KEY'],
-    temperature=0.5,
-    max_tokens=8000,
-    system_prompt="",
-    provider="gemini",
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-)
 explainer = LLMConfig(
-    model_name="learnlm-1.5-pro-experimental",
+    model_name="gemini-2.5-pro",
     api_key=os.environ['GEMINI_API_KEY'],
     temperature=0.5,
     max_tokens=8000,
@@ -132,17 +107,8 @@ explainer = LLMConfig(
     provider="gemini",
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
 )
-preprocess = LLMConfig(
-    model_name="gemini-2.0-flash-exp",
-    api_key=os.environ['GEMINI_API_KEY'],
-    temperature=0.0,
-    max_tokens=8000,
-    system_prompt=PROMPTS['preprocess'],
-    provider="gemini",
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-)
-o3_mini = LLMConfig(
-    model_name="o3-mini",
+o4_mini = LLMConfig(
+    model_name="o4-mini",
     api_key=os.environ['OPENAI_API_KEY'],
     temperature=0.5,
     max_tokens=100000,
@@ -150,7 +116,7 @@ o3_mini = LLMConfig(
     provider="openai"
 )
 visualise = LLMConfig(
-    model_name="gemini-2.0-flash-exp",
+    model_name="gemini-2.0-flash",
     api_key=os.environ['GEMINI_API_KEY'],
     temperature=0.0,
     max_tokens=8000,
@@ -158,16 +124,8 @@ visualise = LLMConfig(
     provider="gemini",
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
 )
-chat_4_5 = LLMConfig(
-    model_name="gpt-4.5-preview",
-    api_key=os.environ['OPENAI_API_KEY'],
-    temperature=0.5,
-    system_prompt=PROMPTS[DEFAULT_SYSTEM_PROMPT_NAME],
-    provider="openai"
-)
-
-o1 = LLMConfig(
-    model_name="o1",
+o3 = LLMConfig(
+    model_name="o3",
     api_key=os.environ['OPENAI_API_KEY'],
     temperature=0.5,
     max_tokens=65536,
@@ -184,113 +142,14 @@ perplexity = LLMConfig(
     base_url="https://api.perplexity.ai"
 )
 
-from pydantic import BaseModel
-
-class QuestionnaireResponse(BaseModel):
-    q1_subscription_duration: int
-    q2_delivery_days: int
-    q3_reading_methods: list[int]
-    q4_time_spent: int
-    q5_preferred_subscription: int
-    q6_format_preference: int
-    q7_subscription_reasons: list[int]
-    q8_overall_satisfaction: int
-    q9_miss_if_not_read_agreement: int
-    q10_recommendation_likelihood: int
-    q11_renewal_likelihood: int
-    q12_website_visit_frequency: int
-    q13_trust_level: int
-    q14_new_app_usage: int
-    q15_listening_habits: int
-    q16_games_familiarity: int
-    q17_games_in_paper: int
-    q18_culture_best: list[int]
-    q19_existence_best: list[int]
-    q20_news_media_best: list[int]
-    q21_church_calendar_usage: int
-    q22_new_section: int
-    q23_new_section_desired: str
-    q24_member_advantages: int
-    q25_radio_tv_usage_daily: int
-    q26_radio_tv_usage_weekly: int
-    q27_digital_radio_tv_access: int
-    q28_gender: int
-    q29_age_group: int
-    q30_occupation: int
-    q31_occupation_field: str
-    q32_postcode: int
-    q33_share_reader_experience: int
-    q34_name: str
-    q35_address: str
-    q36_city: str
-    q37_email: str
-    q38_phone_number: str
-    q39_want_to_receive_offers: bool
-    q40_improvement_suggestions: str
-
-
-marketing_survey_object = LLMConfig(
-    model_name="gemini-2.0-flash-exp",
-    api_key=os.environ['GEMINI_API_KEY'],
-    temperature=0.5,
-    max_tokens=8000,
-    system_prompt="""
-    You are tasked with extracting content from unstructed pictures to structured output.
-    It is IMPERATIVE that,
-        1) You always fill out an answer - if you're unsure, just put 99 if an int field, or 'UNSURE' if string field,
-        2) Instead of giving the answer choice they circled, instead put the number corresponding to which option they choose. I.e. if they answer 3-5 years which is the third option for the first question, you should put down 3.
-        3) If they don't fill out an answer choice, just put in "UNFILLED" or 100. NEVER return a null value 
-
-    Be ABSOLUTELY SURE, that you do not fill out the content of the choices in multiple choice settings - ONLY AN INTEGER OR A LIST.
-
-    """,
-    provider="gemini",
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-    response_format=QuestionnaireResponse
-)
-marketing_survey_object_openai = LLMConfig(
-    model_name="gpt-4o",
-    api_key=os.environ['OPENAI_API_KEY'],
-    temperature=0.5,
-    max_tokens=8000,
-    system_prompt="""
-    You are tasked with extracting content from unstructed pictures to structured output.
-    It is IMPERATIVE that,
-        1) You always fill out an answer - if you're unsure, just put 99 if an int field, or 'UNSURE' if string field,
-        2) Instead of giving the answer choice they circled, instead put the number corresponding to which option they choose. I.e. if they answer 3-5 years which is the third option for the first question, you should put down 3.
-        3) If they don't fill out an answer choice, just put in "UNFILLED" or 100    
-
-    Be ABSOLUTELY SURE, that you do not fill out the content of the choices in multiple choice settings - ONLY AN INTEGER OR A LIST.
-    Take a chain of thought approach. For each option, count the number of options. Then, find the one that's somehow been marked by a pen and then note that number.
-
-    """,
-    provider="openai",
-    # base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-    response_format=QuestionnaireResponse
-)
-
-# llm --vision="/home/adserballe@kd3.int/Documents/GitHub/analysis/analysis/01-2025_marketing_survey/Læserundersøgelse/IMG_6530.HEIC" "what's contained in this image"
-
 SUPPORTED_MODELS = {
     "flash" : flash,
-    "flash_thinking" : flash_thinking,
-    "flash2" : flash,
-    "o3-mini" : o3_mini,
-    "o1" : o1,
+    "o4-mini" : o4_mini,
+    "o3" : o3,
     "perplexity" : perplexity,
-    "preprocess" : preprocess,
     "explainer" : explainer,
     "pro" : pro,
-    "learn" : learn,
-    "marketing" : marketing_survey_object,
-    "marketing_openai" : marketing_survey_object_openai,
     "report": report,
     "visualise": visualise,
-    "chatgpt": chat_4_5,
     "claude": claude,
-    "claude_thinking": claude_thinking,
 }
-
-
-
-
